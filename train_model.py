@@ -27,7 +27,13 @@ def train_model(data_yaml_path):
         name='eyepay_model',
         exist_ok=True
     )
+    
+    return model
+    
+def export_model(model):
+    model.export(format='tflite', half=True)
 
 if __name__ == "__main__":
     yaml_path = prepare_data()
-    train_model(yaml_path)
+    best_model = train_model(yaml_path)
+    export_model(best_model)
