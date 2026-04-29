@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 
 data class DetectionState(
     val resultText: String = "",
+    val ocrText: String = "",
     val isVisible: Boolean = false
 )
 
@@ -19,6 +20,7 @@ class DetectionViewModel : ViewModel() {
     val uiState: StateFlow<DetectionState> = _uiState.asStateFlow()
 
     private var timeoutJob: Job? = null
+    private var lastOcrUpdateTime = 0L
 
     fun onDetection(result: String?) {
         if (result != null) {
@@ -27,8 +29,16 @@ class DetectionViewModel : ViewModel() {
 
             timeoutJob = viewModelScope.launch {
                 delay(4000)
-                _uiState.value = _uiState.value.copy(isVisible = false)
+                _uiState.value = _uiState.value.copy(isVisible = false, ocrText = "")
             }
+        }
+    }
+
+    fun onOcrResult(text: String) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastOcrUpdateTime >= 700) {
+            lastOcrUpdateTime = currentTime
+            _uiState.value = _uiState.value.copy(ocrText = text)
         }
     }
 }

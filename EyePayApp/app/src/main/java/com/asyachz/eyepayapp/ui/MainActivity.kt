@@ -15,13 +15,19 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -50,7 +56,7 @@ fun AppNavigation() {
     var isCameraActive by remember { mutableStateOf(false) }
 
     if (isCameraActive) {
-        CameraScreen()
+        CameraScreen(onBackClick = { isCameraActive = false })
     } else {
         StartScreen { isCameraActive = true }
     }
@@ -83,7 +89,10 @@ fun StartScreen(onStartClick: () -> Unit) {
 }
 
 @Composable
-fun CameraScreen(viewModel: DetectionViewModel = viewModel()) {
+fun CameraScreen(
+    viewModel: DetectionViewModel = viewModel(),
+    onBackClick: () -> Unit
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
@@ -108,9 +117,11 @@ fun CameraScreen(viewModel: DetectionViewModel = viewModel()) {
                         .also {
                             it.setAnalyzer(
                                 cameraExecutor,
-                                EyePayAnalyzer(ctx) { result ->
-                                    viewModel.onDetection(result)
-                                }
+                                EyePayAnalyzer(
+                                    context = ctx,
+                                    onDetectionResult = { result -> viewModel.onDetection(result) },
+                                    onOcrResult = { text -> viewModel.onOcrResult(text) }
+                                )
                             )
                         }
 
@@ -134,17 +145,46 @@ fun CameraScreen(viewModel: DetectionViewModel = viewModel()) {
             modifier = Modifier.fillMaxSize()
         )
 
+        IconButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+                .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape) // Контрастный фон
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Вернуться в меню",
+                tint = Color.White
+            )
+        }
+
         if (uiState.isVisible) {
-            Text(
-                text = uiState.resultText,
-                fontSize = 32.sp,
-                color = Color.White,
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 64.dp)
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(16.dp)
-            )
+                    .padding(bottom = 48.dp)
+                    .background(Color.Black.copy(alpha = 0.7f), shape = MaterialTheme.shapes.medium)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = uiState.resultText,
+                    fontSize = 32.sp,
+                    color = Color.Green,
+                    textAlign = TextAlign.Center
+                )
+
+                if (uiState.ocrText.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = uiState.ocrText,
+                        fontSize = 18.sp,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 

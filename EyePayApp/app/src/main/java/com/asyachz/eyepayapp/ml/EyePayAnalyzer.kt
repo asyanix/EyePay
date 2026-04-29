@@ -7,18 +7,24 @@ import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.tensorflow.lite.Interpreter
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
+import kotlin.math.max
 
 class EyePayAnalyzer(
     context: Context,
-    private val onResult: (String?) -> Unit
+    private val onDetectionResult: (String?) -> Unit,
+    private val onOcrResult: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
 
     private var interpreter: Interpreter
     private var lastAnalyzedTimestamp = 0L
+    private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     private val classNames = mapOf(
         0 to "1000 рублей", 1 to "100 рублей", 2 to "10 рублей",
@@ -58,12 +64,11 @@ class EyePayAnalyzer(
 
         val inputBuffer = convertBitmapToByteBuffer(scaledBitmap)
 
-        // Выходной тензор [1, 300, 6]
         val outputBuffer = Array(1) { Array(300) { FloatArray(6) } }
 
         try {
             interpreter.run(inputBuffer, outputBuffer)
-            processOutput(outputBuffer[0])
+            processOutput(outputBuffer[0], rotatedBitmap)
         } catch (e: Exception) {
             Log.e("EyePayAnalyzer", "Ошибка инференса: ${e.message}")
         } finally {
@@ -71,24 +76,92 @@ class EyePayAnalyzer(
         }
     }
 
-    private fun processOutput(boxes: Array<FloatArray>) {
+    private fun processOutput(boxes: Array<FloatArray>, rotatedBitmap: Bitmap) {
         var maxConfidence = 0f
-        var bestClassIndex = -1
+        var bestBox: FloatArray? = null
 
         for (box in boxes) {
             val confidence = box[4]
             if (confidence > maxConfidence) {
                 maxConfidence = confidence
-                bestClassIndex = box[5].toInt()
+                bestBox = box
             }
         }
 
-        if (maxConfidence >= 0.5f && classNames.containsKey(bestClassIndex)) {
-            val result = classNames[bestClassIndex]!!
-            Log.d("EyePayAnalyzer", "Детекция: $result (Confidence: $maxConfidence)")
-            onResult(result)
+        if (bestBox != null && maxConfidence >= 0.5f) {
+            val classId = bestBox[5].toInt()
+            val className = classNames[classId]
+
+            if (className != null) {
+                onDetectionResult(className)
+
+                if (classId == 9 && maxConfidence > 0.7f) {
+                    cropAndRecognizeText(bestBox, rotatedBitmap)
+                }
+            } else {
+                onDetectionResult(null)
+            }
         } else {
-            onResult(null)
+            onDetectionResult(null)
+        }
+    }
+
+    private fun cropAndRecognizeText(box: FloatArray, originalBitmap: Bitmap) {
+        Log.d("OCR_DEBUG", "Raw box from YOLO: ${box.joinToString()}")
+
+        val cx = box[0]
+        val cy = box[1]
+        val w = box[2]
+        val h = box[3]
+
+        val bitmapWidth = originalBitmap.width
+        val bitmapHeight = originalBitmap.height
+        val isNormalized = cx <= 1f && cy <= 1f
+
+        val left: Int
+        val top: Int
+        val cropWidth: Int
+        val cropHeight: Int
+
+        if (isNormalized) {
+            left = ((cx - w / 2) * bitmapWidth).toInt().coerceIn(0, bitmapWidth - 1)
+            top = ((cy - h / 2) * bitmapHeight).toInt().coerceIn(0, bitmapHeight - 1)
+            cropWidth = (w * bitmapWidth).toInt().coerceIn(32, bitmapWidth - left)
+            cropHeight = (h * bitmapHeight).toInt().coerceIn(32, bitmapHeight - top)
+        } else {
+            val scaleX = bitmapWidth / 640f
+            val scaleY = bitmapHeight / 640f
+
+            left = ((cx - w / 2) * scaleX).toInt().coerceIn(0, bitmapWidth - 1)
+            top = ((cy - h / 2) * scaleY).toInt().coerceIn(0, bitmapHeight - 1)
+            cropWidth = (w * scaleX).toInt().coerceIn(32, bitmapWidth - left)
+            cropHeight = (h * scaleY).toInt().coerceIn(32, bitmapHeight - top)
+        }
+
+        Log.d("OCR_DEBUG", "Final crop: L=$left, T=$top, W=$cropWidth, H=$cropHeight on Bitmap ${bitmapWidth}x${bitmapHeight}")
+
+        try {
+            if (cropWidth < 32 || cropHeight < 32) {
+                Log.e("OCR_DEBUG", "Crop too small, skipping OCR")
+                return
+            }
+
+            val croppedBitmap = Bitmap.createBitmap(originalBitmap, left, top, cropWidth, cropHeight)
+            val inputImage = InputImage.fromBitmap(croppedBitmap, 0)
+
+            textRecognizer.process(inputImage)
+                .addOnSuccessListener { visionText ->
+                    val recognizedText = visionText.text
+                    if (recognizedText.isNotBlank()) {
+                        Log.d("OCR_DEBUG", "Found text:\n$recognizedText")
+                        onOcrResult(recognizedText)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("OCR_DEBUG", "OCR Error: ${e.message}")
+                }
+        } catch (e: Exception) {
+            Log.e("EyePayAnalyzer", "Bitmap creation failed: ${e.message}")
         }
     }
 
