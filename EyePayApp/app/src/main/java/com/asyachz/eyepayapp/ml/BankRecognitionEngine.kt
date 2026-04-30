@@ -8,8 +8,10 @@ class BankRecognitionEngine(context: Context) {
     private val banksConfig: Map<String, List<String>> = loadConfig(context)
     private val history = LinkedList<Pair<Long, String>>()
 
-    private val timeWindowMs = 3000L
+    private val timeWindowMs = 5000L
     private val majorityThreshold = 3
+    var lockedBankName: String? = null
+        private set
     val unknownBankFallback = "Неизвестный банк"
 
     private fun loadConfig(context: Context): Map<String, List<String>> {
@@ -26,6 +28,7 @@ class BankRecognitionEngine(context: Context) {
     }
 
     fun processOcrText(rawText: String): String {
+        lockedBankName?.let { return it }
         val words = rawText.lowercase().split(Regex("\\s+"))
         var detectedBank: String? = null
 
@@ -38,6 +41,11 @@ class BankRecognitionEngine(context: Context) {
         }
 
         return updateBufferAndGetResult(detectedBank)
+    }
+
+    fun reset() {
+        lockedBankName = null
+        history.clear()
     }
 
     private fun findBankForWord(word: String): String? {
@@ -63,16 +71,23 @@ class BankRecognitionEngine(context: Context) {
             history.add(Pair(currentTime, newDetection))
         }
 
-        while (history.isNotEmpty() && (currentTime - history.first().first) > timeWindowMs) {
-            history.removeFirst()
-        }
+        history.removeAll { (time, _) -> currentTime - time > timeWindowMs }
+
+//        while (history.isNotEmpty() && (currentTime - history.first().first) > timeWindowMs) {
+//            history.removeFirst()
+//        }
 
         if (history.isEmpty()) return unknownBankFallback
 
         val counts = history.groupingBy { it.second }.eachCount()
         val (bestBank, count) = counts.maxByOrNull { it.value } ?: return unknownBankFallback
 
-        return if (count >= majorityThreshold) bestBank else unknownBankFallback
+        if (count >= majorityThreshold) {
+            lockedBankName = bestBank
+            return bestBank
+        }
+
+        return unknownBankFallback
     }
 
     private fun levenshtein(lhs: CharSequence, rhs: CharSequence): Int {

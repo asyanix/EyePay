@@ -26,6 +26,8 @@ class EyePayAnalyzer(
     private var lastAnalyzedTimestamp = 0L
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val bankEngine = BankRecognitionEngine(context)
+    private var framesWithoutCard = 0
+    private var lastReportedBank: String? = null
 
     private val classNames = mapOf(
         0 to "1000 рублей", 1 to "100 рублей", 2 to "10 рублей",
@@ -53,7 +55,7 @@ class EyePayAnalyzer(
 
     override fun analyze(image: ImageProxy) {
         val currentTimestamp = System.currentTimeMillis()
-        if (currentTimestamp - lastAnalyzedTimestamp < 500) {
+        if (currentTimestamp - lastAnalyzedTimestamp < 300) {
             image.close()
             return
         }
@@ -78,14 +80,35 @@ class EyePayAnalyzer(
     }
 
     private fun processOutput(boxes: Array<FloatArray>, rotatedBitmap: Bitmap) {
+        var cardDetected = false
         var maxConfidence = 0f
         var bestBox: FloatArray? = null
 
         for (box in boxes) {
             val confidence = box[4]
+            val classId = box[5].toInt()
+
             if (confidence > maxConfidence) {
                 maxConfidence = confidence
                 bestBox = box
+
+                if (classId == 9 && confidence > 0.5f) {
+                    cardDetected = true
+                }
+            }
+        }
+
+        if (cardDetected && bestBox != null) {
+            framesWithoutCard = 0
+            onDetectionResult("Карта")
+            cropAndRecognizeText(bestBox, rotatedBitmap)
+        } else {
+            framesWithoutCard++
+
+            if (framesWithoutCard >= 5) {
+                bankEngine.reset()
+                onDetectionResult(null)
+                updateOcrUi(null)
             }
         }
 
@@ -105,6 +128,18 @@ class EyePayAnalyzer(
         } else {
             onDetectionResult(null)
         }
+    }
+
+    private fun updateOcrUi(newBank: String?) {
+        if (newBank == null) {
+            lastReportedBank = null
+            onOcrResult("")
+            return
+        }
+        if (newBank != lastReportedBank) {
+            lastReportedBank = newBank
+        }
+        onOcrResult(newBank)
     }
 
     private fun cropAndRecognizeText(box: FloatArray, originalBitmap: Bitmap) {
@@ -158,7 +193,7 @@ class EyePayAnalyzer(
 
                         if (finalBankName != bankEngine.unknownBankFallback) {
                             Log.d("OCR_DEBUG", "Final bank name: $finalBankName (Raw text: ${visionText.text.replace("\n", " ")})")
-                            onOcrResult(finalBankName)
+                            updateOcrUi(finalBankName)
                         }
                     }
                 }

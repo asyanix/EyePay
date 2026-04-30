@@ -25,11 +25,14 @@ class DetectionViewModel : ViewModel() {
     fun onDetection(result: String?) {
         if (result != null) {
             timeoutJob?.cancel()
-            _uiState.value = DetectionState(resultText = result, isVisible = true)
+            _uiState.value = _uiState.value.copy(
+                resultText = result,
+                isVisible = true
+            )
 
             timeoutJob = viewModelScope.launch {
                 delay(4000)
-                _uiState.value = _uiState.value.copy(isVisible = false, ocrText = "")
+                _uiState.value = DetectionState(isVisible = false)
             }
         }
     }
