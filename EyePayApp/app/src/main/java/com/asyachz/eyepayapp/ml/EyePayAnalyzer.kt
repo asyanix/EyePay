@@ -25,6 +25,7 @@ class EyePayAnalyzer(
     private var interpreter: Interpreter
     private var lastAnalyzedTimestamp = 0L
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val bankEngine = BankRecognitionEngine(context)
 
     private val classNames = mapOf(
         0 to "1000 рублей", 1 to "100 рублей", 2 to "10 рублей",
@@ -153,12 +154,16 @@ class EyePayAnalyzer(
                 .addOnSuccessListener { visionText ->
                     val recognizedText = visionText.text
                     if (recognizedText.isNotBlank()) {
-                        Log.d("OCR_DEBUG", "Found text:\n$recognizedText")
-                        onOcrResult(recognizedText)
+                        val finalBankName = bankEngine.processOcrText(visionText.text)
+
+                        if (finalBankName != bankEngine.unknownBankFallback) {
+                            Log.d("OCR_DEBUG", "Final bank name: $finalBankName (Raw text: ${visionText.text.replace("\n", " ")})")
+                            onOcrResult(finalBankName)
+                        }
                     }
                 }
                 .addOnFailureListener { e ->
-                    Log.e("OCR_DEBUG", "OCR Error: ${e.message}")
+                    Log.e("OCR_DEBUG", "ML Kit Error: ${e.message}")
                 }
         } catch (e: Exception) {
             Log.e("EyePayAnalyzer", "Bitmap creation failed: ${e.message}")
