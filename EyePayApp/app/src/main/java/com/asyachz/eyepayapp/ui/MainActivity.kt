@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -74,37 +75,32 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
-    var isCameraActive by remember { mutableStateOf(false) }
+    var currentScreen by remember { mutableStateOf("start") }
 
-    if (isCameraActive) {
-        CameraScreen(onBackClick = { isCameraActive = false })
-    } else {
-        StartScreen { isCameraActive = true }
+    when (currentScreen) {
+        "camera" -> CameraScreen(onBackClick = { currentScreen = "start" })
+        "saved_cards" -> SavedCardsScreen(onBackClick = { currentScreen = "start" })
+        else -> StartScreen(
+            onStartClick = { currentScreen = "camera" },
+            onSavedCardsClick = { currentScreen = "saved_cards" }
+        )
     }
 }
 
 @Composable
-fun StartScreen(onStartClick: () -> Unit) {
-    val context = LocalContext.current
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasCameraPermission = isGranted
-        if (isGranted) onStartClick()
-    }
-
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Button(onClick = {
-            if (hasCameraPermission) onStartClick()
-            else permissionLauncher.launch(Manifest.permission.CAMERA)
-        }) {
-            Text("Запустить", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
+fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Button(onClick = onStartClick) {
+            Text("Запустить камеру", fontSize = 20.sp)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onSavedCardsClick) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Сохраненные карты")
         }
     }
 }

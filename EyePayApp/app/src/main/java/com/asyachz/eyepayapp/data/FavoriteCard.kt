@@ -24,6 +24,9 @@ interface CardDao {
     @Delete
     suspend fun deleteCard(card: FavoriteCard)
 
+    @Update
+    suspend fun updateCard(card: FavoriteCard)
+
     @Query("SELECT * FROM favorite_cards WHERE cardNumber = :number LIMIT 1")
     suspend fun getCardByNumber(number: String): FavoriteCard?
 
