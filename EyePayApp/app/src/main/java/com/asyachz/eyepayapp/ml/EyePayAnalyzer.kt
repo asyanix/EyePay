@@ -6,6 +6,7 @@ import android.graphics.Matrix
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import com.asyachz.eyepayapp.tts.TtsManager
 import org.tensorflow.lite.Interpreter
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -18,6 +19,7 @@ import kotlin.math.max
 
 class EyePayAnalyzer(
     context: Context,
+    private val ttsManager: TtsManager,
     private val onDetectionResult: (String?) -> Unit,
     private val onOcrResult: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
@@ -28,6 +30,9 @@ class EyePayAnalyzer(
     private val bankEngine = BankRecognitionEngine(context)
     private var framesWithoutCard = 0
     private var lastReportedBank: String? = null
+    private var lastSuccessfulDetectionTime = System.currentTimeMillis()
+    private var lastOcrSuccessTime = System.currentTimeMillis()
+    private var cardDetectedStartTime = 0L
 
     private val classNames = mapOf(
         0 to "1000 рублей", 1 to "100 рублей", 2 to "10 рублей",
@@ -66,14 +71,13 @@ class EyePayAnalyzer(
         val scaledBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
 
         val inputBuffer = convertBitmapToByteBuffer(scaledBitmap)
-
         val outputBuffer = Array(1) { Array(300) { FloatArray(6) } }
 
         try {
             interpreter.run(inputBuffer, outputBuffer)
             processOutput(outputBuffer[0], rotatedBitmap)
         } catch (e: Exception) {
-            Log.e("EyePayAnalyzer", "Ошибка инференса: ${e.message}")
+            Log.e("EyePayAnalyzer", "Inference error: ${e.message}")
         } finally {
             image.close()
         }
@@ -83,6 +87,7 @@ class EyePayAnalyzer(
         var cardDetected = false
         var maxConfidence = 0f
         var bestBox: FloatArray? = null
+        val now = System.currentTimeMillis()
 
         for (box in boxes) {
             val confidence = box[4]
@@ -98,12 +103,24 @@ class EyePayAnalyzer(
             }
         }
 
-        if (cardDetected && bestBox != null) {
-            framesWithoutCard = 0
+        if (cardDetected) {
+            if (cardDetectedStartTime == 0L) cardDetectedStartTime = now
+            val timeSinceDetected = now - cardDetectedStartTime
+
             onDetectionResult("Карта")
-            cropAndRecognizeText(bestBox, rotatedBitmap)
+
+            if (timeSinceDetected > 3000) {
+//                framesWithoutCard = 0
+//                onDetectionResult("Карта")
+                cropAndRecognizeText(bestBox!!, rotatedBitmap)
+
+                if (now - lastOcrSuccessTime > 8000) {
+                    ttsManager.speak("Попробуйте повернуть карту")
+                }
+            }
         } else {
             framesWithoutCard++
+            cardDetectedStartTime = 0L
 
             if (framesWithoutCard >= 5) {
                 bankEngine.reset()
@@ -112,16 +129,36 @@ class EyePayAnalyzer(
             }
         }
 
+        if (bestBox != null) {
+            val cx = bestBox[0]
+            val cy = bestBox[1]
+            val w = bestBox[2]
+            val h = bestBox[3]
+
+            val isNormalized = cx <= 1f && cy <= 1f
+            val area = if (isNormalized) w * h else (w / 640f) * (h / 640f)
+            val isOutOfBounds = if (isNormalized) (cx - w/2 < 0.05f || cx + w/2 > 0.95f || cy - h/2 < 0.05f || cy + h/2 > 0.95f) else false
+
+            if (cardDetected) {
+                if (now - lastOcrSuccessTime > 8000) {
+                    ttsManager.speak("Попробуйте повернуть карту")
+                }
+            } else if (now - lastSuccessfulDetectionTime > 8000) {
+                if (area < 0.15f) {
+                    ttsManager.speak("Ближе")
+                } else if (area > 0.80f || isOutOfBounds) {
+                    ttsManager.speak("Дальше")
+                }
+            }
+        }
+
         if (bestBox != null && maxConfidence >= 0.5f) {
             val classId = bestBox[5].toInt()
             val className = classNames[classId]
 
             if (className != null) {
+                lastSuccessfulDetectionTime = now
                 onDetectionResult(className)
-
-                if (classId == 9 && maxConfidence > 0.7f) {
-                    cropAndRecognizeText(bestBox, rotatedBitmap)
-                }
             } else {
                 onDetectionResult(null)
             }
@@ -131,6 +168,17 @@ class EyePayAnalyzer(
     }
 
     private fun updateOcrUi(newBank: String?) {
+        val now = System.currentTimeMillis()
+        val isUnknown = newBank == null || newBank == bankEngine.unknownBankFallback
+
+        if (isUnknown && (now - cardDetectedStartTime < 3000)) {
+            return
+        }
+
+        if (newBank != null && newBank != bankEngine.unknownBankFallback) {
+            lastOcrSuccessTime = System.currentTimeMillis()
+        }
+
         if (newBank == null) {
             lastReportedBank = null
             onOcrResult("")
@@ -191,10 +239,8 @@ class EyePayAnalyzer(
                     if (recognizedText.isNotBlank()) {
                         val finalBankName = bankEngine.processOcrText(visionText.text)
 
-                        if (finalBankName != bankEngine.unknownBankFallback) {
-                            Log.d("OCR_DEBUG", "Final bank name: $finalBankName (Raw text: ${visionText.text.replace("\n", " ")})")
-                            updateOcrUi(finalBankName)
-                        }
+                        Log.d("OCR_DEBUG", "Final bank name: $finalBankName (Raw text: ${visionText.text.replace("\n", " ")})")
+                        updateOcrUi(finalBankName)
                     }
                 }
                 .addOnFailureListener { e ->

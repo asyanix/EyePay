@@ -1,5 +1,6 @@
 package com.asyachz.eyepayapp.ui
 
+import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.asyachz.eyepayapp.data.CardDao
 import com.asyachz.eyepayapp.data.FavoriteCard
+import com.asyachz.eyepayapp.tts.TtsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,7 +33,7 @@ data class SaveCardFormState(
     val errorMessage: String? = null
 )
 
-class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
+class DetectionViewModel(private val ttsManager: TtsManager, private val cardDao: CardDao) : ViewModel() {
     private val _uiState = MutableStateFlow(DetectionState())
     val uiState: StateFlow<DetectionState> = _uiState.asStateFlow()
 
@@ -45,6 +47,7 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
     private var lastOcrUpdateTime = 0L
     private var lastDbCheckTime = 0L
     private val dbCheckInterval = 1500L
+    private var lastAnnouncedBank: String? = null
 
     fun onDetection(result: String?) {
         if (result != null) {
@@ -54,9 +57,14 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
                 isVisible = true
             )
 
+            if (result != "Карта") {
+                ttsManager.speak(result)
+            }
+
             timeoutJob = viewModelScope.launch {
                 delay(4000)
-                _uiState.value = DetectionState(isVisible = false)
+                _uiState.update { it.copy(isVisible = false, foundCard = null) }
+//                lastAnnouncedBank = null
             }
         }
     }
@@ -68,13 +76,14 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
             _uiState.update { it.copy(ocrText = text) }
         }
 
-        if (text.isNotEmpty() && text != "Неизвестный банк" &&
-            currentTime - lastDbCheckTime >= dbCheckInterval) {
+        if (text.isNotEmpty() && text != "Неизвестный банк") {
+            val speechText = "Карта ${text}"
+            ttsManager.speak(speechText)
 
-            lastDbCheckTime = currentTime
-            checkBankInDatabase(text)
-        } else if (text.isEmpty() || text == "Неизвестный банк") {
-            _uiState.update { it.copy(foundCard = null) }
+            if (currentTime - lastDbCheckTime >= dbCheckInterval) {
+                lastDbCheckTime = currentTime
+                checkBankInDatabase(text)
+            }
         }
     }
 
@@ -82,6 +91,17 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val card = cardDao.getCardByBank(bankName)
             _uiState.update { it.copy(foundCard = card) }
+
+            if (lastAnnouncedBank != bankName) {
+                lastAnnouncedBank = bankName
+
+                if (card != null && card.note.isNotEmpty()) {
+                    ttsManager.speak(card.note, ignoreCooldown = true)
+                } else if (card == null) {
+                    ttsManager.speak(bankName, ignoreCooldown = true)
+                    ttsManager.speak("Дважды тапните по экрану для добавления в избранное", queueMode = TextToSpeech.QUEUE_ADD)
+                }
+            }
         }
     }
 
@@ -143,10 +163,16 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
                 launch(Dispatchers.Main) {
                     hideBottomSheet()
                     _saveEvent.emit("Карта сохранена")
+                    ttsManager.speak("Карта успешно добавлена", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("EyePay_DB", "Error when saving to the database: ${e.message}")
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        ttsManager.shutdown()
     }
 }

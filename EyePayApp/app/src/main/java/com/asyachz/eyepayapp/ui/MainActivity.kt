@@ -3,6 +3,7 @@ package com.asyachz.eyepayapp.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -110,21 +111,22 @@ fun StartScreen(onStartClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CameraScreen(
-    onBackClick: () -> Unit
-) {
+fun CameraScreen(onBackClick: () -> Unit) {
     val context = LocalContext.current
+    val app = context.applicationContext as EyePayApplication
+
     val viewModel: DetectionViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                val app = context.applicationContext as EyePayApplication
-                DetectionViewModel(app.cardRepository)
+                DetectionViewModel(app.ttsManager, app.cardRepository)
             }
         }
     )
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
     val formState by viewModel.formState.collectAsState()
+    val isTtsReady by app.ttsManager.isReadyState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.saveEvent.collect { message ->
@@ -133,6 +135,16 @@ fun CameraScreen(
     }
 
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    LaunchedEffect(isTtsReady) {
+        if (isTtsReady) {
+            app.ttsManager.speak(
+                text = "Поднесите банкноту или карту к камере телефона",
+                ignoreCooldown = true,
+                queueMode = TextToSpeech.QUEUE_FLUSH
+            )
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
         detectTapGestures(
@@ -160,6 +172,7 @@ fun CameraScreen(
                                 cameraExecutor,
                                 EyePayAnalyzer(
                                     context = ctx,
+                                    app.ttsManager,
                                     onDetectionResult = { result -> viewModel.onDetection(result) },
                                     onOcrResult = { text -> viewModel.onOcrResult(text) }
                                 )
@@ -200,7 +213,7 @@ fun CameraScreen(
             )
         }
 
-        if (uiState.isVisible && uiState.ocrText.isNotEmpty() && uiState.ocrText != "Неизвестный банк" && uiState.foundCard == null) {
+        if (uiState.isVisible && uiState.ocrText.isNotEmpty() && uiState.foundCard == null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -262,7 +275,7 @@ fun CameraScreen(
                         }
                     }
                 } else {
-                    if (uiState.ocrText.isNotEmpty() && uiState.ocrText != "Неизвестный банк") {
+                    if (uiState.ocrText.isNotEmpty()) {
                         Text(
                             text = uiState.ocrText,
                             fontSize = 20.sp,
