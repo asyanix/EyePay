@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.update
 data class DetectionState(
     val resultText: String = "",
     val ocrText: String = "",
-    val isVisible: Boolean = false
+    val isVisible: Boolean = false,
+    val foundCard: FavoriteCard? = null
 )
 
 data class SaveCardFormState(
@@ -42,6 +43,8 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
 
     private var timeoutJob: Job? = null
     private var lastOcrUpdateTime = 0L
+    private var lastDbCheckTime = 0L
+    private val dbCheckInterval = 1500L
 
     fun onDetection(result: String?) {
         if (result != null) {
@@ -62,8 +65,30 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastOcrUpdateTime >= 700) {
             lastOcrUpdateTime = currentTime
-            _uiState.value = _uiState.value.copy(ocrText = text)
+            _uiState.update { it.copy(ocrText = text) }
         }
+
+        if (text.isNotEmpty() && text != "Неизвестный банк" &&
+            currentTime - lastDbCheckTime >= dbCheckInterval) {
+
+            lastDbCheckTime = currentTime
+            checkBankInDatabase(text)
+        } else if (text.isEmpty() || text == "Неизвестный банк") {
+            _uiState.update { it.copy(foundCard = null) }
+        }
+    }
+
+    private fun checkBankInDatabase(bankName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val card = cardDao.getCardByBank(bankName)
+            _uiState.update { it.copy(foundCard = card) }
+        }
+    }
+
+    fun formatCardNumber(fullNumber: String): String {
+        return if (fullNumber.length >= 4) {
+            "**** ${fullNumber.takeLast(4)}"
+        } else "****"
     }
 
     fun showBottomSheet() {

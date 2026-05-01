@@ -200,7 +200,7 @@ fun CameraScreen(
             )
         }
 
-        if (uiState.isVisible && uiState.ocrText.isNotEmpty() && uiState.ocrText != "Неизвестный банк") {
+        if (uiState.isVisible && uiState.ocrText.isNotEmpty() && uiState.ocrText != "Неизвестный банк" && uiState.foundCard == null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -222,107 +222,66 @@ fun CameraScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 48.dp)
-                    .background(Color.Black.copy(alpha = 0.7f), shape = MaterialTheme.shapes.medium)
+                    .fillMaxWidth(0.85f)
+                    .background(Color.Black.copy(alpha = 0.7f), shape = RoundedCornerShape(16.dp))
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = uiState.resultText,
-                    fontSize = 32.sp,
+                    fontSize = 28.sp,
                     color = Color.Green,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold
                 )
 
-                if (uiState.ocrText.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = uiState.ocrText,
-                        fontSize = 18.sp,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (uiState.foundCard != null) {
+                    val card = uiState.foundCard!!
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = card.bankName,
+                            fontSize = 20.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = viewModel.formatCardNumber(card.cardNumber),
+                            fontSize = 18.sp,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                        if (card.note.isNotEmpty()) {
+                            Text(
+                                text = card.note,
+                                fontSize = 16.sp,
+                                color = Color.LightGray,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                } else {
+                    if (uiState.ocrText.isNotEmpty() && uiState.ocrText != "Неизвестный банк") {
+                        Text(
+                            text = uiState.ocrText,
+                            fontSize = 20.sp,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
     }
 
-//    if (formState.isVisible) {
-//        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-//
-//        ModalBottomSheet(
-//            onDismissRequest = { viewModel.hideBottomSheet() },
-//            sheetState = sheetState
-//        ) {
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(16.dp)
-//                    .padding(bottom = 32.dp),
-//                horizontalAlignment = Alignment.CenterHorizontally
-//            ) {
-//                Text(
-//                    text = "Приложите карту к задней крышке телефона",
-//                    color = MaterialTheme.colorScheme.primary,
-//                    fontWeight = FontWeight.Medium,
-//                    modifier = Modifier.padding(bottom = 16.dp)
-//                )
-//
-//                OutlinedTextField(
-//                    value = formState.bankName,
-//                    onValueChange = {},
-//                    label = { Text("Банк") },
-//                    readOnly = true,
-//                    isError = formState.errorMessage == "Заполните все поля",
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(8.dp))
-//
-//                OutlinedTextField(
-//                    value = formState.cardNumber,
-//                    onValueChange = { viewModel.updateCardNumber(it) },
-//                    label = { Text("Номер карты") },
-//                    isError = formState.errorMessage != null,
-//                    supportingText = {
-//                        if (formState.errorMessage != null) {
-//                            Text(text = formState.errorMessage!!, color = MaterialTheme.colorScheme.error)
-//                        }
-//                    },
-//                    singleLine = true,
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(8.dp))
-//
-//                OutlinedTextField(
-//                    value = formState.note,
-//                    onValueChange = { viewModel.updateNote(it) },
-//                    label = { Text("Заметка") },
-//                    isError = formState.errorMessage == "Заполните все поля",
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(24.dp))
-//
-//                Button(
-//                    onClick = { viewModel.saveCard() },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    shape = RoundedCornerShape(8.dp)
-//                ) {
-//                    Text("Добавить", modifier = Modifier.padding(vertical = 8.dp))
-//                }
-//            }
-//        }
-//    }
-
     if (formState.isVisible) {
         AlertDialog(
             onDismissRequest = { viewModel.hideBottomSheet() },
-            properties = DialogProperties(usePlatformDefaultWidth = false), // Позволяет контенту адаптироваться
+            properties = DialogProperties(usePlatformDefaultWidth = false),
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .wrapContentHeight()
-                .imePadding(), // Автоматический отступ при появлении клавиатуры
+                .imePadding(),
             confirmButton = {
                 TextButton(onClick = { viewModel.saveCard() }) {
                     Text("Отправить")

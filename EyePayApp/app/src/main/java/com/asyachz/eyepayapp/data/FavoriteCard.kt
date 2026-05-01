@@ -26,4 +26,7 @@ interface CardDao {
 
     @Query("SELECT * FROM favorite_cards WHERE cardNumber = :number LIMIT 1")
     suspend fun getCardByNumber(number: String): FavoriteCard?
+
+    @Query("SELECT * FROM favorite_cards WHERE bankName = :bankName LIMIT 1")
+    suspend fun getCardByBank(bankName: String): FavoriteCard?
 }

@@ -73,10 +73,6 @@ class BankRecognitionEngine(context: Context) {
 
         history.removeAll { (time, _) -> currentTime - time > timeWindowMs }
 
-//        while (history.isNotEmpty() && (currentTime - history.first().first) > timeWindowMs) {
-//            history.removeFirst()
-//        }
-
         if (history.isEmpty()) return unknownBankFallback
 
         val counts = history.groupingBy { it.second }.eachCount()
