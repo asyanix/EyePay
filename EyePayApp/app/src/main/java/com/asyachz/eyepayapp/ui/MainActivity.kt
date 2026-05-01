@@ -16,19 +16,25 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,9 +45,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -129,10 +137,7 @@ fun CameraScreen(
     Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
         detectTapGestures(
             onDoubleTap = {
-                val currentBank = uiState.ocrText
-                if (currentBank.isNotEmpty() && currentBank != "Неизвестный банк") {
-                    viewModel.showBottomSheet()
-                }
+                viewModel.showBottomSheet()
             }
         )
     }) {
@@ -195,6 +200,23 @@ fun CameraScreen(
             )
         }
 
+        if (uiState.isVisible && uiState.ocrText.isNotEmpty() && uiState.ocrText != "Неизвестный банк") {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Добавить в избранное?\nДважды коснитесь экрана",
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
         if (uiState.isVisible) {
             Column(
                 modifier = Modifier
@@ -220,86 +242,157 @@ fun CameraScreen(
                         textAlign = TextAlign.Center
                     )
                 }
-
-                val currentBank = uiState.ocrText
-                if (currentBank.isNotEmpty() && currentBank != "Неизвестный банк") {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Box(
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Добавить в избранное?\nДважды коснитесь экрана",
-                            color = Color.White,
-                            textAlign = TextAlign.Center,
-                            fontSize = 16.sp
-                        )
-                    }
-                }
             }
         }
     }
 
+//    if (formState.isVisible) {
+//        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+//
+//        ModalBottomSheet(
+//            onDismissRequest = { viewModel.hideBottomSheet() },
+//            sheetState = sheetState
+//        ) {
+//            Column(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp)
+//                    .padding(bottom = 32.dp),
+//                horizontalAlignment = Alignment.CenterHorizontally
+//            ) {
+//                Text(
+//                    text = "Приложите карту к задней крышке телефона",
+//                    color = MaterialTheme.colorScheme.primary,
+//                    fontWeight = FontWeight.Medium,
+//                    modifier = Modifier.padding(bottom = 16.dp)
+//                )
+//
+//                OutlinedTextField(
+//                    value = formState.bankName,
+//                    onValueChange = {},
+//                    label = { Text("Банк") },
+//                    readOnly = true,
+//                    isError = formState.errorMessage == "Заполните все поля",
+//                    modifier = Modifier.fillMaxWidth()
+//                )
+//
+//                Spacer(modifier = Modifier.height(8.dp))
+//
+//                OutlinedTextField(
+//                    value = formState.cardNumber,
+//                    onValueChange = { viewModel.updateCardNumber(it) },
+//                    label = { Text("Номер карты") },
+//                    isError = formState.errorMessage != null,
+//                    supportingText = {
+//                        if (formState.errorMessage != null) {
+//                            Text(text = formState.errorMessage!!, color = MaterialTheme.colorScheme.error)
+//                        }
+//                    },
+//                    singleLine = true,
+//                    modifier = Modifier.fillMaxWidth()
+//                )
+//
+//                Spacer(modifier = Modifier.height(8.dp))
+//
+//                OutlinedTextField(
+//                    value = formState.note,
+//                    onValueChange = { viewModel.updateNote(it) },
+//                    label = { Text("Заметка") },
+//                    isError = formState.errorMessage == "Заполните все поля",
+//                    modifier = Modifier.fillMaxWidth()
+//                )
+//
+//                Spacer(modifier = Modifier.height(24.dp))
+//
+//                Button(
+//                    onClick = { viewModel.saveCard() },
+//                    modifier = Modifier.fillMaxWidth(),
+//                    shape = RoundedCornerShape(8.dp)
+//                ) {
+//                    Text("Добавить", modifier = Modifier.padding(vertical = 8.dp))
+//                }
+//            }
+//        }
+//    }
+
     if (formState.isVisible) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-        ModalBottomSheet(
+        AlertDialog(
             onDismissRequest = { viewModel.hideBottomSheet() },
-            sheetState = sheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .padding(bottom = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            properties = DialogProperties(usePlatformDefaultWidth = false), // Позволяет контенту адаптироваться
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight()
+                .imePadding(), // Автоматический отступ при появлении клавиатуры
+            confirmButton = {
+                TextButton(onClick = { viewModel.saveCard() }) {
+                    Text("Отправить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideBottomSheet() }) {
+                    Text("Закрыть")
+                }
+            },
+            title = {
                 Text(
-                    text = "Приложите карту к задней крышке телефона",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                OutlinedTextField(
-                    value = uiState.ocrText,
-                    onValueChange = {},
-                    label = { Text("Банк") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = formState.cardNumber,
-                    onValueChange = { viewModel.updateCardNumber(it) },
-                    label = { Text("Номер карты") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = formState.note,
-                    onValueChange = { viewModel.updateNote(it) },
-                    label = { Text("Заметка") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = { viewModel.saveCard() },
+                    text = "Добавить в избранное",
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Добавить", modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        text = "Приложите карту к задней крышке телефона",
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = formState.bankName,
+                        onValueChange = {},
+                        label = { Text("Банк") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = formState.cardNumber,
+                        onValueChange = { viewModel.updateCardNumber(it) },
+                        label = { Text("Номер карты") },
+                        isError = formState.errorMessage != null,
+                        supportingText = {
+                            if (formState.errorMessage != null) {
+                                Text(text = formState.errorMessage!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = formState.note,
+                        onValueChange = { viewModel.updateNote(it) },
+                        label = { Text("Заметка") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3
+                    )
                 }
             }
-        }
+        )
     }
 
     DisposableEffect(Unit) {

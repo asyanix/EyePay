@@ -24,8 +24,10 @@ data class DetectionState(
 
 data class SaveCardFormState(
     val isVisible: Boolean = false,
+    val bankName: String = "",
     val cardNumber: String = "",
-    val note: String = ""
+    val note: String = "",
+    val errorMessage: String? = null
 )
 
 class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
@@ -65,39 +67,60 @@ class DetectionViewModel(private val cardDao: CardDao) : ViewModel() {
     }
 
     fun showBottomSheet() {
-        _formState.update { it.copy(isVisible = true) }
+        val currentBank = _uiState.value.ocrText
+        if (currentBank.isNotEmpty() && currentBank != "Неизвестный банк") {
+            _formState.update { it.copy(
+                isVisible = true,
+                bankName = currentBank,
+                errorMessage = null
+            ) }
+        }
     }
 
     fun hideBottomSheet() {
-        _formState.update { it.copy(isVisible = false, cardNumber = "", note = "") }
+        _formState.update { it.copy(isVisible = false, cardNumber = "", note = "", errorMessage = null) }
     }
 
     fun updateCardNumber(number: String) {
-        _formState.update { it.copy(cardNumber = number) }
+        _formState.update { it.copy(cardNumber = number, errorMessage = null) }
     }
 
     fun updateNote(note: String) {
-        _formState.update { it.copy(note = note) }
+        _formState.update { it.copy(note = note, errorMessage = null) }
     }
 
     fun saveCard() {
-        val currentBank = _uiState.value.ocrText
         val form = _formState.value
+        android.util.Log.d("EyePay_DB", "Adding to the database started. Data: bank=${form.bankName}, card=${form.cardNumber}")
 
-        if (currentBank.isEmpty() || currentBank == "Неизвестный банк") return
+        if (form.bankName.isBlank() || form.cardNumber.isBlank() || form.note.isBlank()) {
+            _formState.update { it.copy(errorMessage = "Заполните все поля") }
+            return
+        }
+
+        val cardRegex = Regex("^[0-9]{16}$")
+        if (!cardRegex.matches(form.cardNumber)) {
+            _formState.update { it.copy(errorMessage = "Номер должен содержать строго 16 цифр") }
+            return
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val card = FavoriteCard(
-                bankName = currentBank,
-                cardNumber = form.cardNumber,
-                expiryDate = "",
-                note = form.note
-            )
-            cardDao.insertCard(card)
+            try {
+                val card = FavoriteCard(
+                    bankName = form.bankName,
+                    cardNumber = form.cardNumber,
+                    expiryDate = "",
+                    note = form.note
+                )
+                cardDao.insertCard(card)
+                android.util.Log.d("EyePay_DB", "The recording was saved successfully. ID: ${card.id}")
 
-            launch(Dispatchers.Main) {
-                hideBottomSheet()
-                _saveEvent.emit("Карта сохранена")
+                launch(Dispatchers.Main) {
+                    hideBottomSheet()
+                    _saveEvent.emit("Карта сохранена")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("EyePay_DB", "Error when saving to the database: ${e.message}")
             }
         }
     }

@@ -46,6 +46,7 @@ room {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.foundation.layout)
     val cameraxVersion = "1.3.1"
     implementation("androidx.camera:camera-core:$cameraxVersion")
     implementation("androidx.camera:camera-camera2:$cameraxVersion")
