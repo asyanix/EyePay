@@ -27,6 +27,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.data.FavoriteCard
 
+val EyePayBlue = Color(0xFF2241A0)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedCardsScreen(onBackClick: () -> Unit) {
@@ -130,7 +132,7 @@ fun CardItem(
                         (if (isVisible) "Номер показан" else "Номер скрыт").also { contentDescription = it }
                     }
                 ) {
-                    Text(formatNumber(), color = MaterialTheme.colorScheme.primary, fontSize = 16.sp)
+                    Text(formatNumber(), color = EyePayBlue, fontSize = 16.sp)
                 }
 
                 if (card.note.isNotEmpty()) {
@@ -199,7 +201,7 @@ fun AddEditCardDialog(
             } else {
                 onConfirm(bankName, cardNumber, note)
             }
-        }) {
+        }, colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue)) {
             Text("Сохранить")
         }
     },

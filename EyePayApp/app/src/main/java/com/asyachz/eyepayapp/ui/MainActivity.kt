@@ -1,14 +1,10 @@
 package com.asyachz.eyepayapp.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -29,15 +25,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,32 +70,85 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
-    var currentScreen by remember { mutableStateOf("start") }
-
-    when (currentScreen) {
-        "camera" -> CameraScreen(onBackClick = { currentScreen = "start" })
-        "saved_cards" -> SavedCardsScreen(onBackClick = { currentScreen = "start" })
-        else -> StartScreen(
-            onStartClick = { currentScreen = "camera" },
-            onSavedCardsClick = { currentScreen = "saved_cards" }
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = EyePayBlue,
+            secondary = EyePayBlue,
+            onPrimary = Color.White
         )
-    }
+    ) {
+        var currentScreen by remember { mutableStateOf("start") }
+
+        when (currentScreen) {
+            "camera" -> CameraScreen(onBackClick = { currentScreen = "start" })
+            "saved_cards" -> SavedCardsScreen(onBackClick = { currentScreen = "start" })
+            else -> StartScreen(
+                onStartClick = { currentScreen = "camera" },
+                onSavedCardsClick = { currentScreen = "saved_cards" }
+            )
+        }}
 }
 
 @Composable
 fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(onClick = onStartClick) {
-            Text("Запустить камеру", fontSize = 20.sp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(4f)
+                .background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "EyePay",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = EyePayBlue
+            )
         }
+
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onSavedCardsClick) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Сохраненные карты")
+
+        Button(
+            onClick = onStartClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(7f),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue)
+        ) {
+            Text("Открыть камеру", fontSize = 24.sp, color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onSavedCardsClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(7f),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue)
+        ) {
+            Text("Сохраненные карты", fontSize = 24.sp, color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { /* Логика не меняется, пока пусто */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(7f),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue)
+        ) {
+            Text("Настройки", fontSize = 24.sp, color = Color.White)
         }
     }
 }
