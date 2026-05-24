@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.asyachz.eyepayapp.data.CardDao
 import com.asyachz.eyepayapp.data.FavoriteCard
+import com.asyachz.eyepayapp.tts.HapticManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -11,7 +12,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SavedCardsViewModel(private val cardDao: CardDao) : ViewModel() {
+class SavedCardsViewModel(
+    private val cardDao: CardDao,
+    private val hapticManager: HapticManager
+    ) : ViewModel() {
     val cards: StateFlow<List<FavoriteCard>> = cardDao.getAllCards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -30,6 +34,9 @@ class SavedCardsViewModel(private val cardDao: CardDao) : ViewModel() {
     fun deleteCard(card: FavoriteCard) {
         viewModelScope.launch(Dispatchers.IO) {
             cardDao.deleteCard(card)
+            launch(Dispatchers.Main) {
+                hapticManager.vibrateDelete()
+            }
         }
     }
 
@@ -48,6 +55,9 @@ class SavedCardsViewModel(private val cardDao: CardDao) : ViewModel() {
                 note = note
             )
             cardDao.insertCard(newCard)
+            launch(Dispatchers.Main) {
+                hapticManager.vibrateSuccess()
+            }
         }
     }
 

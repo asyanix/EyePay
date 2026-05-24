@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.asyachz.eyepayapp.data.CardDao
 import com.asyachz.eyepayapp.data.FavoriteCard
+import com.asyachz.eyepayapp.tts.HapticManager
 import com.asyachz.eyepayapp.tts.TtsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,7 +34,11 @@ data class SaveCardFormState(
     val errorMessage: String? = null
 )
 
-class DetectionViewModel(private val ttsManager: TtsManager, private val cardDao: CardDao) : ViewModel() {
+class DetectionViewModel(
+    private val ttsManager: TtsManager,
+    private val cardDao: CardDao,
+    private val hapticManager: HapticManager
+    ) : ViewModel() {
     private val _uiState = MutableStateFlow(DetectionState())
     val uiState: StateFlow<DetectionState> = _uiState.asStateFlow()
 
@@ -164,6 +169,7 @@ class DetectionViewModel(private val ttsManager: TtsManager, private val cardDao
                     hideBottomSheet()
                     _saveEvent.emit("Карта сохранена")
                     ttsManager.speak("Карта успешно добавлена", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
+                    hapticManager.vibrateSuccess()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("EyePay_DB", "Error when saving to the database: ${e.message}")

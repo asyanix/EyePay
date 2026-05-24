@@ -3,6 +3,8 @@ package com.asyachz.eyepayapp.ml
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -15,11 +17,13 @@ import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
+import com.asyachz.eyepayapp.tts.HapticManager
 import kotlin.math.max
 
 class EyePayAnalyzer(
     context: Context,
     private val ttsManager: TtsManager,
+    private val hapticManager: HapticManager,
     private val onDetectionResult: (String?) -> Unit,
     private val onOcrResult: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
@@ -29,6 +33,8 @@ class EyePayAnalyzer(
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val bankEngine = BankRecognitionEngine(context)
     private var framesWithoutCard = 0
+    private var isTargetTracked = false
+    private val lostTargetThresholdFrames = 10
     private var lastReportedBank: String? = null
     private var lastSuccessfulDetectionTime = System.currentTimeMillis()
     private var lastOcrSuccessTime = System.currentTimeMillis()
@@ -73,9 +79,28 @@ class EyePayAnalyzer(
         val inputBuffer = convertBitmapToByteBuffer(scaledBitmap)
         val outputBuffer = Array(1) { Array(300) { FloatArray(6) } }
 
+        val isYoloDetected = false
+
         try {
             interpreter.run(inputBuffer, outputBuffer)
             processOutput(outputBuffer[0], rotatedBitmap)
+
+            val isObjectFound = isYoloDetected
+            if (isObjectFound) {
+                framesWithoutCard = 0
+                if (!isTargetTracked) {
+                    isTargetTracked = true
+                    Handler(Looper.getMainLooper()).post {
+                        hapticManager.vibrateDetection()
+                    }
+                }
+            } else {
+                framesWithoutCard++
+                if (framesWithoutCard >= lostTargetThresholdFrames) {
+                    isTargetTracked = false
+                }
+            }
+
         } catch (e: Exception) {
             Log.e("EyePayAnalyzer", "Inference error: ${e.message}")
         } finally {

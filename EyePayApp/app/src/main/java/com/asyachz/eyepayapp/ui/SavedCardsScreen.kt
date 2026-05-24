@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.data.FavoriteCard
 import com.asyachz.eyepayapp.nfc.NfcManager
+import com.asyachz.eyepayapp.tts.HapticManager
 
 val EyePayBlue = Color(0xFF2241A0)
 
@@ -37,9 +38,10 @@ val EyePayBlue = Color(0xFF2241A0)
 fun SavedCardsScreen(onBackClick: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as EyePayApplication
+    val hapticManager = remember { HapticManager.getInstance(context) }
     val viewModel: SavedCardsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { SavedCardsViewModel(app.cardRepository) }
+            initializer { SavedCardsViewModel(app.cardRepository, hapticManager) }
         }
     )
 

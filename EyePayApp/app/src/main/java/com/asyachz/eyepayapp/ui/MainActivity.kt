@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -56,10 +57,12 @@ import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.ml.EyePayAnalyzer
 import java.util.concurrent.Executors
 import com.asyachz.eyepayapp.nfc.NfcManager
+import com.asyachz.eyepayapp.tts.HapticManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val hapticManager = HapticManager.getInstance(this)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -160,11 +163,11 @@ fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit) {
 fun CameraScreen(onBackClick: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as EyePayApplication
-
+    val hapticManager = remember { HapticManager.getInstance(context) }
     val viewModel: DetectionViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                DetectionViewModel(app.ttsManager, app.cardRepository)
+                DetectionViewModel(app.ttsManager, app.cardRepository, hapticManager)
             }
         }
     )
@@ -219,6 +222,7 @@ fun CameraScreen(onBackClick: () -> Unit) {
                                 EyePayAnalyzer(
                                     context = ctx,
                                     app.ttsManager,
+                                    hapticManager = hapticManager,
                                     onDetectionResult = { result -> viewModel.onDetection(result) },
                                     onOcrResult = { text -> viewModel.onOcrResult(text) }
                                 )
@@ -334,7 +338,7 @@ fun CameraScreen(onBackClick: () -> Unit) {
     }
 
     if (formState.isVisible) {
-        val activity = LocalContext.current as? Activity
+        val activity = LocalActivity.current
 
         DisposableEffect(Unit) {
             val nfcManager = activity?.let { act ->
