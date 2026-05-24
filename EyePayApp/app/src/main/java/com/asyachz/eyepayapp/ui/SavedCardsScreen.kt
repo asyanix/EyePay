@@ -1,5 +1,6 @@
 package com.asyachz.eyepayapp.ui
 
+import android.app.Activity
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -26,6 +28,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.data.FavoriteCard
+import com.asyachz.eyepayapp.nfc.NfcManager
 
 val EyePayBlue = Color(0xFF2241A0)
 
@@ -156,10 +159,37 @@ fun AddEditCardDialog(
     onDismiss: () -> Unit,
     onConfirm: (bank: String, number: String, note: String) -> Unit
 ) {
+    val context = LocalContext.current
+    val activity = context as? Activity
     var bankName by remember { mutableStateOf(card?.bankName ?: "") }
     var cardNumber by remember { mutableStateOf(card?.cardNumber ?: "") }
     var note by remember { mutableStateOf(card?.note ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
+    var isNfcScanning by remember { mutableStateOf(card == null) }
+
+    if (card == null) {
+        DisposableEffect(activity) {
+            val nfcManager = activity?.let {
+                NfcManager(
+                    activity = it,
+                    onCardRead = { pan, _ ->
+                        cardNumber = pan
+                        error = null
+                        isNfcScanning = false
+                    },
+                    onError = { errorMsg ->
+                        error = errorMsg
+                    }
+                )
+            }
+
+            nfcManager?.enableReaderMode()
+
+            onDispose {
+                nfcManager?.disableReaderMode()
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -168,6 +198,17 @@ fun AddEditCardDialog(
     title = { Text(if (card == null) "Добавить карту" else "Редактировать") },
     text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (isNfcScanning) {
+                Text(
+                    text = "Приложите карту к задней крышке телефона для автозаполнения номера",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+            }
             OutlinedTextField(
                 value = bankName,
                 onValueChange = { bankName = it; error = null },
@@ -181,9 +222,9 @@ fun AddEditCardDialog(
                 label = { Text("Номер карты (16 цифр)") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = error != null,
-            supportingText = { if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error) },
-            singleLine = true
+                isError = error != null,
+                supportingText = { if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error) },
+                singleLine = true
             )
             OutlinedTextField(
                 value = note,

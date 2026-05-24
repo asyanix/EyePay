@@ -58,6 +58,7 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0")
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
+    implementation("com.github.devnied.emvnfccard:library:3.0.1")
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

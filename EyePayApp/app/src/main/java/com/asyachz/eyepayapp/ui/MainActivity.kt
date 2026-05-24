@@ -1,5 +1,6 @@
 package com.asyachz.eyepayapp.ui
 
+import android.app.Activity
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
@@ -54,6 +55,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.ml.EyePayAnalyzer
 import java.util.concurrent.Executors
+import com.asyachz.eyepayapp.nfc.NfcManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -332,6 +334,27 @@ fun CameraScreen(onBackClick: () -> Unit) {
     }
 
     if (formState.isVisible) {
+        val activity = LocalContext.current as? Activity
+
+        DisposableEffect(Unit) {
+            val nfcManager = activity?.let { act ->
+                NfcManager(
+                    activity = act,
+                    onCardRead = { pan, _ ->
+                        viewModel.updateCardNumberFromNfc(pan)
+                    },
+                    onError = { errorMsg ->
+                        viewModel.setNfcError(errorMsg)
+                    }
+                )
+            }
+
+            nfcManager?.enableReaderMode()
+
+            onDispose {
+                nfcManager?.disableReaderMode()
+            }
+        }
         AlertDialog(
             onDismissRequest = { viewModel.hideBottomSheet() },
             properties = DialogProperties(usePlatformDefaultWidth = false),

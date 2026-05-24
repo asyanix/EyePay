@@ -171,6 +171,14 @@ class DetectionViewModel(private val ttsManager: TtsManager, private val cardDao
         }
     }
 
+    fun updateCardNumberFromNfc(number: String) {
+        _formState.update { it.copy(cardNumber = number, errorMessage = null) }
+    }
+
+    fun setNfcError(message: String) {
+        _formState.update { it.copy(errorMessage = message) }
+    }
+
     override fun onCleared() {
         super.onCleared()
         ttsManager.shutdown()
