@@ -223,6 +223,7 @@ fun CameraScreen(onBackClick: () -> Unit) {
                                     context = ctx,
                                     app.ttsManager,
                                     hapticManager = hapticManager,
+                                    isFormOpen = { viewModel.formState.value.isVisible },
                                     onDetectionResult = { result -> viewModel.onDetection(result) },
                                     onOcrResult = { text -> viewModel.onOcrResult(text) }
                                 )
@@ -360,7 +361,7 @@ fun CameraScreen(onBackClick: () -> Unit) {
             }
         }
         AlertDialog(
-            onDismissRequest = { viewModel.hideBottomSheet() },
+            onDismissRequest = {},
             properties = DialogProperties(usePlatformDefaultWidth = false),
             modifier = Modifier
                 .fillMaxWidth(0.9f)
@@ -411,7 +412,11 @@ fun CameraScreen(onBackClick: () -> Unit) {
 
                     OutlinedTextField(
                         value = formState.cardNumber,
-                        onValueChange = { viewModel.updateCardNumber(it) },
+                        onValueChange = { input ->
+                            if (input.length <= 16) {
+                                viewModel.updateCardNumber(input)
+                            }
+                        },
                         label = { Text("Номер карты") },
                         isError = formState.errorMessage != null,
                         supportingText = {

@@ -24,6 +24,7 @@ class EyePayAnalyzer(
     context: Context,
     private val ttsManager: TtsManager,
     private val hapticManager: HapticManager,
+    private val isFormOpen: () -> Boolean,
     private val onDetectionResult: (String?) -> Unit,
     private val onOcrResult: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
@@ -65,6 +66,11 @@ class EyePayAnalyzer(
     }
 
     override fun analyze(image: ImageProxy) {
+        if (isFormOpen()) {
+            image.close()
+            return
+        }
+
         val currentTimestamp = System.currentTimeMillis()
         if (currentTimestamp - lastAnalyzedTimestamp < 300) {
             image.close()

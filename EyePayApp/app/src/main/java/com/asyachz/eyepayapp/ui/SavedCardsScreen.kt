@@ -195,7 +195,7 @@ fun AddEditCardDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
         modifier = Modifier.fillMaxWidth(0.9f).imePadding(),
     title = { Text(if (card == null) "Добавить карту" else "Редактировать") },
     text = {
