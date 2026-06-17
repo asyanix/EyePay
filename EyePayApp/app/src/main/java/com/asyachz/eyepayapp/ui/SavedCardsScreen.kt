@@ -31,7 +31,6 @@ import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.data.FavoriteCard
 import com.asyachz.eyepayapp.nfc.NfcManager
 import com.asyachz.eyepayapp.tts.HapticManager
-import com.asyachz.eyepayapp.tts.TtsManager
 
 val EyePayBlue = Color(0xFF2241A0)
 
@@ -262,6 +261,8 @@ fun AddEditCardDialog(
             }
 
             onConfirm(bankName, cardNumber, note)
+
+            eyePayTtsManager.speak("Карта успешно добавлена", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
         }, colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue)) {
             Text("Сохранить")
         }

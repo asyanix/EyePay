@@ -102,10 +102,15 @@ class DetectionViewModel(
             if (lastAnnouncedBank != bankName) {
                 lastAnnouncedBank = bankName
 
-                if (card != null && card.note.isNotEmpty()) {
-                    ttsManager.speak(card.note, ignoreCooldown = true)
-                } else if (card == null) {
-                    ttsManager.speak(bankName, ignoreCooldown = true)
+                val speechText = if (card != null && card.note.isNotBlank()) {
+                    "$bankName, ${card.note}"
+                } else {
+                    bankName
+                }
+
+                ttsManager.speak(speechText, queueMode = TextToSpeech.QUEUE_ADD)
+
+                if (card == null) {
                     ttsManager.speak("Дважды тапните по экрану для добавления в избранное", queueMode = TextToSpeech.QUEUE_ADD)
                 }
             }

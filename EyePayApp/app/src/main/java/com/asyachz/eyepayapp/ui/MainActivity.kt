@@ -1,6 +1,5 @@
 package com.asyachz.eyepayapp.ui
 
-import android.app.Activity
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
@@ -393,7 +392,7 @@ fun CameraScreen(onBackClick: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Приложите карту к задней крышке телефона",
+                        text = "Приложите карту к задней крышке телефона для автозаполнения номера",
                         color = MaterialTheme.colorScheme.secondary,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center,

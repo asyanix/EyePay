@@ -18,7 +18,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import com.asyachz.eyepayapp.tts.HapticManager
-import kotlin.math.max
 
 class EyePayAnalyzer(
     context: Context,
