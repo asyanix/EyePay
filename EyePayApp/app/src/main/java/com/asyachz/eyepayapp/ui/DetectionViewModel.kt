@@ -31,7 +31,9 @@ data class SaveCardFormState(
     val bankName: String = "",
     val cardNumber: String = "",
     val note: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isBankError: Boolean = false,
+    val isCardError: Boolean = false
 )
 
 class DetectionViewModel(
@@ -131,6 +133,10 @@ class DetectionViewModel(
         _formState.update { it.copy(isVisible = false, cardNumber = "", note = "", errorMessage = null) }
     }
 
+    fun updateBankName(name: String) {
+        _formState.update { it.copy(bankName = name, errorMessage = null) }
+    }
+
     fun updateCardNumber(number: String) {
         _formState.update { it.copy(cardNumber = number, errorMessage = null) }
     }
@@ -143,15 +149,23 @@ class DetectionViewModel(
         val form = _formState.value
         android.util.Log.d("EyePay_DB", "Adding to the database started. Data: bank=${form.bankName}, card=${form.cardNumber}")
 
-        if (form.bankName.isBlank() || form.cardNumber.isBlank() || form.note.isBlank()) {
-            _formState.update { it.copy(errorMessage = "Заполните все поля") }
+        val isBankEmpty = form.bankName.isBlank()
+        val isCardInvalid = form.cardNumber.length != 16
+
+        if (isBankEmpty) {
+            _formState.update { it.copy(isBankError = true) }
+            ttsManager.speak("Заполните название банка", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
             return
+        } else {
+            _formState.update { it.copy(isBankError = false) }
         }
 
-        val cardRegex = Regex("^[0-9]{16}$")
-        if (!cardRegex.matches(form.cardNumber)) {
-            _formState.update { it.copy(errorMessage = "Номер должен содержать строго 16 цифр") }
+        if (isCardInvalid) {
+            _formState.update { it.copy(isCardError = true, errorMessage = "Неверный номер карты") }
+            ttsManager.speak("Неверный номер карты", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
             return
+        } else {
+            _formState.update { it.copy(isCardError = false, errorMessage = null) }
         }
 
         viewModelScope.launch(Dispatchers.IO) {

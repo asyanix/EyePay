@@ -368,7 +368,7 @@ fun CameraScreen(onBackClick: () -> Unit) {
                 .wrapContentHeight()
                 .imePadding(),
             confirmButton = {
-                TextButton(onClick = { viewModel.saveCard() }) {
+                TextButton(onClick = { viewModel.saveCard() }, enabled = true,) {
                     Text("Отправить")
                 }
             },
@@ -402,12 +402,17 @@ fun CameraScreen(onBackClick: () -> Unit) {
 
                     OutlinedTextField(
                         value = formState.bankName,
-                        onValueChange = {},
-                        label = { Text("Банк") },
-                        readOnly = true,
+                        onValueChange = { viewModel.updateBankName(it) },
+                        label = { Text("Название банка") },
+                        isError = formState.isBankError,
+                        supportingText = {
+                            if (formState.isBankError) {
+                                Text(text = "Заполните название банка", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
@@ -418,9 +423,9 @@ fun CameraScreen(onBackClick: () -> Unit) {
                             }
                         },
                         label = { Text("Номер карты") },
-                        isError = formState.errorMessage != null,
+                        isError = formState.isCardError,
                         supportingText = {
-                            if (formState.errorMessage != null) {
+                            if (formState.isCardError && formState.errorMessage != null) {
                                 Text(text = formState.errorMessage!!, color = MaterialTheme.colorScheme.error)
                             }
                         },

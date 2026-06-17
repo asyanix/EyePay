@@ -1,6 +1,7 @@
 package com.asyachz.eyepayapp.ui
 
 import android.app.Activity
+import android.speech.tts.TextToSpeech
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import com.asyachz.eyepayapp.EyePayApplication
 import com.asyachz.eyepayapp.data.FavoriteCard
 import com.asyachz.eyepayapp.nfc.NfcManager
 import com.asyachz.eyepayapp.tts.HapticManager
+import com.asyachz.eyepayapp.tts.TtsManager
 
 val EyePayBlue = Color(0xFF2241A0)
 
@@ -161,13 +163,16 @@ fun AddEditCardDialog(
     onDismiss: () -> Unit,
     onConfirm: (bank: String, number: String, note: String) -> Unit
 ) {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext as EyePayApplication
     val activity = context as? Activity
     var bankName by remember { mutableStateOf(card?.bankName ?: "") }
     var cardNumber by remember { mutableStateOf(card?.cardNumber ?: "") }
     var note by remember { mutableStateOf(card?.note ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
     var isNfcScanning by remember { mutableStateOf(card == null) }
+    var isBankError by remember { mutableStateOf(false) }
+    var isCardError by remember { mutableStateOf(false) }
+    val eyePayTtsManager = context.ttsManager
 
     if (card == null) {
         DisposableEffect(activity) {
@@ -213,19 +218,21 @@ fun AddEditCardDialog(
             }
             OutlinedTextField(
                 value = bankName,
-                onValueChange = { bankName = it; error = null },
-                label = { Text("Название банка") },
+                onValueChange = { bankName = it; isBankError = false; error = null },
+                label = { Text("Банк") },
+                isError = isBankError,
+                supportingText = { if (isBankError) Text("Заполните название банка", color = MaterialTheme.colorScheme.error) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             OutlinedTextField(
                 value = cardNumber,
-                onValueChange = { if (it.length <= 16) { cardNumber = it; error = null } },
+                onValueChange = { if (it.length <= 16) { cardNumber = it; isCardError = false; error = null } },
                 label = { Text("Номер карты (16 цифр)") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = error != null,
-                supportingText = { if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error) },
+                isError = isCardError,
+                supportingText = { if (isCardError) Text("Неверный номер карты", color = MaterialTheme.colorScheme.error) },
                 singleLine = true
             )
             OutlinedTextField(
@@ -239,11 +246,22 @@ fun AddEditCardDialog(
     },
     confirmButton = {
         Button(onClick = {
-            if (bankName.isBlank() || cardNumber.length != 16) {
-                error = "Введите корректные данные (16 цифр номера)"
-            } else {
-                onConfirm(bankName, cardNumber, note)
+            val isBankEmpty = bankName.isBlank()
+            val isCardInvalid = cardNumber.length != 16
+
+            isBankError = isBankEmpty
+            isCardError = isCardInvalid
+
+            if (isBankEmpty) {
+                eyePayTtsManager.speak("Заполните название банка", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
+                return@Button
             }
+            if (isCardInvalid) {
+                eyePayTtsManager.speak("Неверный номер карты", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
+                return@Button
+            }
+
+            onConfirm(bankName, cardNumber, note)
         }, colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue)) {
             Text("Сохранить")
         }
