@@ -100,6 +100,10 @@ fun AppNavigation(nfcManager: NfcManager) {
                 nfcManager.onCardReadListener = null
                 nfcManager.onErrorListener = null
             }
+            "settings" -> {
+                nfcManager.onCardReadListener = null
+                nfcManager.onErrorListener = null
+            }
             else -> {
                 nfcManager.onCardReadListener = null
                 nfcManager.onErrorListener = null
@@ -123,16 +127,20 @@ fun AppNavigation(nfcManager: NfcManager) {
                 nfcManager = nfcManager,
                 onBackClick = { currentScreen = "start" }
             )
+            "settings" -> SettingsScreen(
+                onBackClick = { currentScreen = "start" }
+            )
             else -> StartScreen(
                 onStartClick = { currentScreen = "camera" },
-                onSavedCardsClick = { currentScreen = "saved_cards" }
+                onSavedCardsClick = { currentScreen = "saved_cards" },
+                onSettingsClick = { currentScreen = "settings" }
             )
         }
     }
 }
 
 @Composable
-fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit) {
+fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit, onSettingsClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -183,7 +191,7 @@ fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { /* Логика не меняется, пока пусто */ },
+            onClick = onSettingsClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(7f),

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.Locale
 
 class TtsManager(context: Context) : TextToSpeech.OnInitListener {
+    private val settingsRepository = com.asyachz.eyepayapp.data.SettingsRepository(context)
     private var tts: TextToSpeech? = null
     private var isReady = false
 
@@ -36,6 +37,8 @@ class TtsManager(context: Context) : TextToSpeech.OnInitListener {
     }
 
     fun speak(text: String, ignoreCooldown: Boolean = false, queueMode: Int = TextToSpeech.QUEUE_ADD) {
+        if (!settingsRepository.isTtsEnabled()) return
+
         if (!isReady || text.isBlank() || text == "Неизвестный банк") return
 
         val now = System.currentTimeMillis()

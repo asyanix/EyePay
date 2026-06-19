@@ -32,4 +32,7 @@ interface CardDao {
 
     @Query("SELECT * FROM favorite_cards WHERE bankName = :bankName LIMIT 1")
     suspend fun getCardByBank(bankName: String): FavoriteCard?
+
+    @Query("DELETE FROM favorite_cards")
+    suspend fun deleteAllCards()
 }

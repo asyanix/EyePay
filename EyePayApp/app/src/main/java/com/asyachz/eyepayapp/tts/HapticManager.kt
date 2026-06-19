@@ -9,6 +9,7 @@ import android.os.VibratorManager
 import androidx.annotation.MainThread
 
 class HapticManager private constructor(context: Context) {
+    private val settingsRepository = com.asyachz.eyepayapp.data.SettingsRepository(context)
 
     private val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= VERSION_CODES.S) {
         val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -20,6 +21,8 @@ class HapticManager private constructor(context: Context) {
 
     @MainThread
     fun vibrateSuccess() {
+        if (!settingsRepository.isHapticEnabled()) return
+
         if (Build.VERSION.SDK_INT >= VERSION_CODES.Q) {
             vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
         } else {
@@ -30,6 +33,8 @@ class HapticManager private constructor(context: Context) {
 
     @MainThread
     fun vibrateDelete() {
+        if (!settingsRepository.isHapticEnabled()) return
+
         val timings = longArrayOf(0, 40, 60, 40)
         val amplitudes = intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE)
 
@@ -43,6 +48,8 @@ class HapticManager private constructor(context: Context) {
 
     @MainThread
     fun vibrateDetection() {
+        if (!settingsRepository.isHapticEnabled()) return
+
         if (Build.VERSION.SDK_INT >= VERSION_CODES.Q) {
             vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
         } else {
