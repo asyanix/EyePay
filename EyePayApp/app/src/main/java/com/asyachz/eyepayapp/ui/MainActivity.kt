@@ -152,8 +152,7 @@ fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit, onSetti
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(4f)
-                .background(Color.White),
+                .weight(4f),
             contentAlignment = Alignment.Center
         ) {
             Text(

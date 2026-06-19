@@ -2,6 +2,8 @@ package com.asyachz.eyepayapp.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -10,12 +12,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -104,7 +108,54 @@ fun SettingsScreen(onBackClick: () -> Unit) {
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = { viewModel.showUserGuide() },
+                colors = ButtonDefaults.buttonColors(containerColor = EyePayBlue),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .semantics {
+                        contentDescription = "Руководство пользования"
+                    }
+            ) {
+                Text(text = "Руководство пользования", fontSize = 18.sp, textAlign = TextAlign.Center)
+            }
+
+            if (viewModel.isUserGuideVisible) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    properties = DialogProperties(
+                        dismissOnClickOutside = false,
+                        dismissOnBackPress = true
+                    ),
+                    title = {
+                        Text(
+                            text = "Руководство пользования",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.semantics { heading() }
+                        )
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = "Для озвучивания номинала купюры наведите камеру смартфона на нее. Сделайте одно касание в любой точке дисплея — текущий номинал прибавится к общему счету. Чтобы проверить и очистить накопленную сумму, дважды коснитесь экрана — приложение произнесет итоговый результат.\n" +
+                                        "\nДля распознавания банковской карты наведите на неё камеру. Приложение определит название банка. Сделайте двойное касание экрана, чтобы добавить карту в избранное. Приложите карту к задней крышке телефона для автоматического заполнения номера карты. Добавьте к карте текстовую заметку и нажмите «Добавить» для сохранения карты.\n" +
+                                        "\nВ раздел «Сохраненные карты» отображен список всех добавленных банковских карт, номера карт по умолчанию скрыты в целях безопасности. Нажмите на номер, чтобы открыть его полностью. Вы можете в любое время отредактировать или удалить избранную карту.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.hideUserGuide() }) {
+                            Text("Закрыть")
+                        }
+                    }
+                )
+            }
 
             Button(
                 onClick = { showDeleteConfirmDialog = true },

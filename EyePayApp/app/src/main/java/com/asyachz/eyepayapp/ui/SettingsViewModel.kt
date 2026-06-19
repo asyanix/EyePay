@@ -1,5 +1,8 @@
 package com.asyachz.eyepayapp.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.asyachz.eyepayapp.data.CardDao
@@ -24,6 +27,9 @@ class SettingsViewModel(
 
     private val _isHapticEnabled = MutableStateFlow(settingsRepository.isHapticEnabled())
     val isHapticEnabled: StateFlow<Boolean> = _isHapticEnabled.asStateFlow()
+
+    var isUserGuideVisible by mutableStateOf(false)
+        private set
 
     fun toggleTts(enabled: Boolean) {
         settingsRepository.setTtsEnabled(enabled)
@@ -51,5 +57,13 @@ class SettingsViewModel(
                 onComplete()
             }
         }
+    }
+
+    fun showUserGuide() {
+        isUserGuideVisible = true
+    }
+
+    fun hideUserGuide() {
+        isUserGuideVisible = false
     }
 }
