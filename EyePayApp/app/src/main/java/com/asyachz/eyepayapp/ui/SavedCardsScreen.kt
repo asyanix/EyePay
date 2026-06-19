@@ -42,7 +42,7 @@ fun SavedCardsScreen(nfcManager: NfcManager, onBackClick: () -> Unit) {
     val hapticManager = remember { HapticManager.getInstance(context) }
     val viewModel: SavedCardsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { SavedCardsViewModel(app.cardRepository, hapticManager) }
+            initializer { SavedCardsViewModel(app.cardRepository, hapticManager, ttsManager = app.ttsManager) }
         }
     )
 

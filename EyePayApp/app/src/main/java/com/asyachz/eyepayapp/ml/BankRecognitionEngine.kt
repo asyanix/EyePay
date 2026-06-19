@@ -13,6 +13,8 @@ class BankRecognitionEngine(context: Context) {
     var lockedBankName: String? = null
         private set
     val unknownBankFallback = "Неизвестный банк"
+    private var lockTimestamp = 0L
+    private val lockDurationMs = 10000L
 
     private fun loadConfig(context: Context): Map<String, List<String>> {
         val jsonString = context.assets.open("banks_config.json").bufferedReader().use { it.readText() }
@@ -28,7 +30,10 @@ class BankRecognitionEngine(context: Context) {
     }
 
     fun processOcrText(rawText: String): String {
-        lockedBankName?.let { return it }
+        val currentTime = System.currentTimeMillis()
+        if (lockedBankName != null && currentTime - lockTimestamp < lockDurationMs) {
+            return lockedBankName!!
+        }
         val words = rawText.lowercase().split(Regex("\\s+"))
         var detectedBank: String? = null
 
@@ -80,8 +85,11 @@ class BankRecognitionEngine(context: Context) {
 
         if (count >= majorityThreshold) {
             lockedBankName = bestBank
+            lockTimestamp = currentTime
             return bestBank
         }
+
+        lockedBankName = null
 
         return unknownBankFallback
     }

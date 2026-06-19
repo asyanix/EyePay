@@ -1,10 +1,12 @@
 package com.asyachz.eyepayapp.ui
 
+import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.asyachz.eyepayapp.data.CardDao
 import com.asyachz.eyepayapp.data.FavoriteCard
 import com.asyachz.eyepayapp.tts.HapticManager
+import com.asyachz.eyepayapp.tts.TtsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,7 +16,8 @@ import kotlinx.coroutines.launch
 
 class SavedCardsViewModel(
     private val cardDao: CardDao,
-    private val hapticManager: HapticManager
+    private val hapticManager: HapticManager,
+    private val ttsManager: TtsManager
     ) : ViewModel() {
     val cards: StateFlow<List<FavoriteCard>> = cardDao.getAllCards()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -35,6 +38,7 @@ class SavedCardsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             cardDao.deleteCard(card)
             launch(Dispatchers.Main) {
+                ttsManager.speak("Карта удалена", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
                 hapticManager.vibrateDelete()
             }
         }

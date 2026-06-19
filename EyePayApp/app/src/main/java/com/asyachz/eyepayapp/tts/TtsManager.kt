@@ -13,7 +13,7 @@ class TtsManager(context: Context) : TextToSpeech.OnInitListener {
     private var isReady = false
 
     private val speechCooldowns = mutableMapOf<String, Long>()
-    private val COOLDOWN_MS = 6000L
+    private val COOLDOWN_MS = 7000L
     private val _isReadyState = MutableStateFlow(false)
     val isReadyState: StateFlow<Boolean> = _isReadyState.asStateFlow()
 
