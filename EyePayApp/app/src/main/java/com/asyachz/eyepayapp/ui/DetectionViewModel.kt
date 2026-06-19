@@ -198,10 +198,15 @@ class DetectionViewModel(
 
     fun updateCardNumberFromNfc(number: String) {
         _formState.update { it.copy(cardNumber = number, errorMessage = null) }
+        ttsManager.speak("Карта отсканирована", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
+        hapticManager.vibrateSuccess()
     }
 
     fun setNfcError(message: String) {
         _formState.update { it.copy(errorMessage = message) }
+
+        ttsManager.speak("Ошибка чтения NFC", ignoreCooldown = true, queueMode = TextToSpeech.QUEUE_FLUSH)
+        hapticManager.vibrateDelete()
     }
 
     override fun onCleared() {

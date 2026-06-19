@@ -59,21 +59,54 @@ import com.asyachz.eyepayapp.nfc.NfcManager
 import com.asyachz.eyepayapp.tts.HapticManager
 
 class MainActivity : ComponentActivity() {
+    private lateinit var nfcManager: NfcManager
+    private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val hapticManager = HapticManager.getInstance(this)
+        nfcManager = NfcManager(this)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation()
+                    AppNavigation(nfcManager = nfcManager)
                 }
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        nfcManager.enableReaderMode()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        nfcManager.disableReaderMode()
+    }
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(nfcManager: NfcManager) {
+    var currentScreen by remember { mutableStateOf("start") }
+
+    LaunchedEffect(currentScreen) {
+        when (currentScreen) {
+            "camera" -> {
+                nfcManager.onCardReadListener = null
+                nfcManager.onErrorListener = null
+            }
+            "saved_cards" -> {
+                nfcManager.onCardReadListener = null
+                nfcManager.onErrorListener = null
+            }
+            else -> {
+                nfcManager.onCardReadListener = null
+                nfcManager.onErrorListener = null
+            }
+        }
+    }
+
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = EyePayBlue,
@@ -81,16 +114,21 @@ fun AppNavigation() {
             onPrimary = Color.White
         )
     ) {
-        var currentScreen by remember { mutableStateOf("start") }
-
         when (currentScreen) {
-            "camera" -> CameraScreen(onBackClick = { currentScreen = "start" })
-            "saved_cards" -> SavedCardsScreen(onBackClick = { currentScreen = "start" })
+            "camera" -> CameraScreen(
+                nfcManager = nfcManager,
+                onBackClick = { currentScreen = "start" }
+            )
+            "saved_cards" -> SavedCardsScreen(
+                nfcManager = nfcManager,
+                onBackClick = { currentScreen = "start" }
+            )
             else -> StartScreen(
                 onStartClick = { currentScreen = "camera" },
                 onSavedCardsClick = { currentScreen = "saved_cards" }
             )
-        }}
+        }
+    }
 }
 
 @Composable
@@ -159,7 +197,7 @@ fun StartScreen(onStartClick: () -> Unit, onSavedCardsClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CameraScreen(onBackClick: () -> Unit) {
+fun CameraScreen(nfcManager: NfcManager, onBackClick: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as EyePayApplication
     val hapticManager = remember { HapticManager.getInstance(context) }
@@ -338,25 +376,17 @@ fun CameraScreen(onBackClick: () -> Unit) {
     }
 
     if (formState.isVisible) {
-        val activity = LocalActivity.current
-
         DisposableEffect(Unit) {
-            val nfcManager = activity?.let { act ->
-                NfcManager(
-                    activity = act,
-                    onCardRead = { pan, _ ->
-                        viewModel.updateCardNumberFromNfc(pan)
-                    },
-                    onError = { errorMsg ->
-                        viewModel.setNfcError(errorMsg)
-                    }
-                )
+            nfcManager.onCardReadListener = { pan, expiry ->
+                viewModel.updateCardNumberFromNfc(pan)
+            }
+            nfcManager.onErrorListener = { message ->
+                viewModel.setNfcError(message)
             }
 
-            nfcManager?.enableReaderMode()
-
             onDispose {
-                nfcManager?.disableReaderMode()
+                nfcManager.onCardReadListener = null
+                nfcManager.onErrorListener = null
             }
         }
         AlertDialog(

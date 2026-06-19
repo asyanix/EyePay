@@ -36,7 +36,7 @@ val EyePayBlue = Color(0xFF2241A0)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SavedCardsScreen(onBackClick: () -> Unit) {
+fun SavedCardsScreen(nfcManager: NfcManager, onBackClick: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as EyePayApplication
     val hapticManager = remember { HapticManager.getInstance(context) }
@@ -91,6 +91,7 @@ fun SavedCardsScreen(onBackClick: () -> Unit) {
 
     if (showAddDialog) {
         AddEditCardDialog(
+            nfcManager = nfcManager,
             onDismiss = { showAddDialog = false },
             onConfirm = { bank, number, note ->
                 viewModel.addCard(bank, number, note)
@@ -101,6 +102,7 @@ fun SavedCardsScreen(onBackClick: () -> Unit) {
 
     editingCard?.let { card ->
         AddEditCardDialog(
+            nfcManager = nfcManager,
             card = card,
             onDismiss = { editingCard = null },
             onConfirm = { bank, number, note ->
@@ -158,12 +160,12 @@ fun CardItem(
 
 @Composable
 fun AddEditCardDialog(
+    nfcManager: NfcManager,
     card: FavoriteCard? = null,
     onDismiss: () -> Unit,
     onConfirm: (bank: String, number: String, note: String) -> Unit
 ) {
     val context = LocalContext.current.applicationContext as EyePayApplication
-    val activity = context as? Activity
     var bankName by remember { mutableStateOf(card?.bankName ?: "") }
     var cardNumber by remember { mutableStateOf(card?.cardNumber ?: "") }
     var note by remember { mutableStateOf(card?.note ?: "") }
@@ -172,27 +174,39 @@ fun AddEditCardDialog(
     var isBankError by remember { mutableStateOf(false) }
     var isCardError by remember { mutableStateOf(false) }
     val eyePayTtsManager = context.ttsManager
+    val hapticManager = remember { HapticManager.getInstance(context) }
 
     if (card == null) {
-        DisposableEffect(activity) {
-            val nfcManager = activity?.let {
-                NfcManager(
-                    activity = it,
-                    onCardRead = { pan, _ ->
-                        cardNumber = pan
-                        error = null
-                        isNfcScanning = false
-                    },
-                    onError = { errorMsg ->
-                        error = errorMsg
-                    }
+        DisposableEffect(Unit) {
+            nfcManager.onCardReadListener = { pan, _ ->
+                cardNumber = pan
+                error = null
+                isNfcScanning = false
+                isCardError = false
+
+                hapticManager.vibrateSuccess()
+                eyePayTtsManager.speak(
+                    "Карта отсканирована",
+                    ignoreCooldown = true,
+                    queueMode = android.speech.tts.TextToSpeech.QUEUE_FLUSH
                 )
             }
 
-            nfcManager?.enableReaderMode()
+            nfcManager.onErrorListener = { errorMsg ->
+                error = errorMsg
+                isCardError = true
+
+                hapticManager.vibrateDelete()
+                eyePayTtsManager.speak(
+                    "Ошибка чтения",
+                    ignoreCooldown = true,
+                    queueMode = android.speech.tts.TextToSpeech.QUEUE_FLUSH
+                )
+            }
 
             onDispose {
-                nfcManager?.disableReaderMode()
+                nfcManager.onCardReadListener = null
+                nfcManager.onErrorListener = null
             }
         }
     }
