@@ -42,6 +42,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -242,9 +244,8 @@ fun CameraScreen(nfcManager: NfcManager, onBackClick: () -> Unit) {
 
     Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
         detectTapGestures(
-            onDoubleTap = {
-                viewModel.showBottomSheet()
-            }
+            onTap = { viewModel.onSingleTapReceived() },
+            onDoubleTap = { viewModel.onDoubleTapReceived() }
         )
     }) {
         AndroidView(
@@ -307,6 +308,48 @@ fun CameraScreen(nfcManager: NfcManager, onBackClick: () -> Unit) {
                 contentDescription = "Вернуться в меню",
                 tint = Color.White
             )
+        }
+
+        if (uiState.totalSum > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = "Итого: ${uiState.totalSum} ₽",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Текущая сумма: ${uiState.totalSum} рублей"
+                    }
+                )
+            }
+        }
+
+
+        if (uiState.isSummingUiVisible) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+                    .background(
+                        color = Color.Black.copy(alpha = 0.75f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(horizontal = 24.dp, vertical = 14.dp)
+            ) {
+                Text(
+                    text = "Нажмите на экран\nдля суммирования",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
 
         if (uiState.isVisible && uiState.ocrText.isNotEmpty() && uiState.foundCard == null) {

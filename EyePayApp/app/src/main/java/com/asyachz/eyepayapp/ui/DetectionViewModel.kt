@@ -23,7 +23,10 @@ data class DetectionState(
     val resultText: String = "",
     val ocrText: String = "",
     val isVisible: Boolean = false,
-    val foundCard: FavoriteCard? = null
+    val foundCard: FavoriteCard? = null,
+    val totalSum: Long = 0L,
+    val currentDetectedBillValue: Long = 0L,
+    val isSummingUiVisible: Boolean = false
 )
 
 data class SaveCardFormState(
@@ -59,10 +62,15 @@ class DetectionViewModel(
     fun onDetection(result: String?) {
         if (result != null) {
             timeoutJob?.cancel()
-            _uiState.value = _uiState.value.copy(
+
+            val billValue = if (result != "Карта") parseBillValue(result) else 0L
+
+            _uiState.update { it.copy(
                 resultText = result,
-                isVisible = true
-            )
+                isVisible = true,
+                currentDetectedBillValue = billValue,
+                isSummingUiVisible = billValue > 0L
+            ) }
 
             if (result != "Карта") {
                 ttsManager.speak(result)
@@ -70,9 +78,60 @@ class DetectionViewModel(
 
             timeoutJob = viewModelScope.launch {
                 delay(4000)
-                _uiState.update { it.copy(isVisible = false, foundCard = null) }
-//                lastAnnouncedBank = null
+                _uiState.update { it.copy(
+                    isVisible = false,
+                    foundCard = null,
+                    isSummingUiVisible = false,
+                    currentDetectedBillValue = 0L
+                ) }
             }
+        }
+    }
+
+    private fun parseBillValue(className: String): Long {
+        return className.filter { it.isDigit() }.toLongOrNull() ?: 0L
+    }
+
+    fun onSingleTapReceived() {
+        val currentState = _uiState.value
+        if (currentState.currentDetectedBillValue > 0) {
+            val newTotal = currentState.totalSum + currentState.currentDetectedBillValue
+
+            _uiState.update { it.copy(
+                totalSum = newTotal,
+                currentDetectedBillValue = 0L,
+                isSummingUiVisible = false
+            ) }
+
+            hapticManager.vibrateSuccess()
+            ttsManager.speak(
+                "Добавлено, итого: $newTotal рублей",
+                ignoreCooldown = true,
+                queueMode = TextToSpeech.QUEUE_FLUSH
+            )
+        }
+    }
+
+    fun onDoubleTapReceived() {
+        val currentState = _uiState.value
+
+        if (currentState.totalSum > 0 || currentState.isSummingUiVisible) {
+            val finalSum = currentState.totalSum
+
+            _uiState.update { it.copy(
+                totalSum = 0L,
+                currentDetectedBillValue = 0L,
+                isSummingUiVisible = false
+            ) }
+
+            hapticManager.vibrateDetection()
+            ttsManager.speak(
+                "Итоговая сумма: $finalSum рублей. Сумма сброшена.",
+                ignoreCooldown = true,
+                queueMode = TextToSpeech.QUEUE_FLUSH
+            )
+        } else {
+            showBottomSheet()
         }
     }
 
