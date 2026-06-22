@@ -39,6 +39,8 @@ class EyePayAnalyzer(
     private var lastSuccessfulDetectionTime = System.currentTimeMillis()
     private var lastOcrSuccessTime = System.currentTimeMillis()
     private var cardDetectedStartTime = 0L
+    private var lastOcrAttemptTime = 0L
+    private var isCardAnnouncementMade = false
 
     private val classNames = mapOf(
         0 to "1000 рублей", 1 to "100 рублей", 2 to "10 рублей",
@@ -49,7 +51,7 @@ class EyePayAnalyzer(
 
     init {
         val modelBuffer = loadModelFile(context, "eyepay_model.tflite")
-        val options = Interpreter.Options().apply { numThreads = 4 }
+        val options = Interpreter.Options().apply { numThreads = 2 }
         interpreter = Interpreter(modelBuffer, options)
     }
 
@@ -82,6 +84,7 @@ class EyePayAnalyzer(
         val scaledBitmap = Bitmap.createScaledBitmap(rotatedBitmap, 640, 640, false)
 
         val inputBuffer = convertBitmapToByteBuffer(scaledBitmap)
+        scaledBitmap.recycle()
         val outputBuffer = Array(1) { Array(300) { FloatArray(6) } }
 
         val isYoloDetected = false
@@ -109,6 +112,10 @@ class EyePayAnalyzer(
         } catch (e: Exception) {
             Log.e("EyePayAnalyzer", "Inference error: ${e.message}")
         } finally {
+            if (rotatedBitmap != bitmap) {
+                rotatedBitmap.recycle()
+            }
+            bitmap.recycle()
             image.close()
         }
     }
@@ -137,15 +144,21 @@ class EyePayAnalyzer(
             if (cardDetectedStartTime == 0L) cardDetectedStartTime = now
             val timeSinceDetected = now - cardDetectedStartTime
 
+            if (!isCardAnnouncementMade) {
+                isCardAnnouncementMade = true
+                ttsManager.speak("Карта", queueMode = android.speech.tts.TextToSpeech.QUEUE_ADD)
+            }
+
             onDetectionResult("Карта")
 
             if (timeSinceDetected > 3000) {
-//                framesWithoutCard = 0
-//                onDetectionResult("Карта")
-                cropAndRecognizeText(bestBox!!, rotatedBitmap)
-
-                if (now - lastOcrSuccessTime > 8000) {
+                if (now - lastOcrSuccessTime > 10000) {
                     ttsManager.speak("Попробуйте повернуть карту")
+                }
+                
+                if (now - lastOcrSuccessTime > 2000) {
+                    lastOcrAttemptTime = now
+                    cropAndRecognizeText(bestBox!!, rotatedBitmap)
                 }
             }
         } else {
@@ -154,6 +167,7 @@ class EyePayAnalyzer(
 
             if (framesWithoutCard >= 5) {
                 bankEngine.reset()
+                isCardAnnouncementMade = false
                 onDetectionResult(null)
                 updateOcrUi(null)
             }
@@ -265,6 +279,7 @@ class EyePayAnalyzer(
 
             textRecognizer.process(inputImage)
                 .addOnSuccessListener { visionText ->
+                    croppedBitmap.recycle()
                     val recognizedText = visionText.text
                     if (recognizedText.isNotBlank()) {
                         val finalBankName = bankEngine.processOcrText(visionText.text)

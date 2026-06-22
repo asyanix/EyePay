@@ -84,7 +84,11 @@ class DetectionViewModel(
                     isSummingUiVisible = false,
                     currentDetectedBillValue = 0L
                 ) }
+                lastAnnouncedBank = null
             }
+        }
+        else {
+            lastAnnouncedBank = null
         }
     }
 
@@ -137,15 +141,19 @@ class DetectionViewModel(
 
     fun onOcrResult(text: String) {
         val currentTime = System.currentTimeMillis()
+
+        if (text.isEmpty()) {
+            lastAnnouncedBank = null
+            _uiState.update { it.copy(ocrText = "") }
+            return
+        }
+
         if (currentTime - lastOcrUpdateTime >= 700) {
             lastOcrUpdateTime = currentTime
             _uiState.update { it.copy(ocrText = text) }
         }
 
         if (text.isNotEmpty() && text != "Неизвестный банк") {
-            val speechText = "Карта ${text}"
-            ttsManager.speak(speechText)
-
             if (currentTime - lastDbCheckTime >= dbCheckInterval) {
                 lastDbCheckTime = currentTime
                 checkBankInDatabase(text)
@@ -167,7 +175,7 @@ class DetectionViewModel(
                     bankName
                 }
 
-                ttsManager.speak(speechText, queueMode = TextToSpeech.QUEUE_ADD)
+                ttsManager.speak(speechText, queueMode = android.speech.tts.TextToSpeech.QUEUE_ADD)
 
                 if (card == null) {
                     ttsManager.speak("Дважды тапните по экрану для добавления в избранное", queueMode = TextToSpeech.QUEUE_ADD)
